@@ -471,6 +471,15 @@ int framebuffer_device_open(hw_module_t const* module, const char* name, hw_devi
 	int status = -EINVAL;
 
 	alloc_device_t* gralloc_device;
+#if DISABLE_FRAMEBUFFER_HAL == 1
+	AERR("Framebuffer HAL not support/disabled %s",
+#ifdef MALI_DISPLAY_VERSION
+	"with MALI display enable");
+#else
+	"");
+#endif
+	return -ENODEV;
+#endif
 	status = gralloc_open(module, &gralloc_device);
 	if (status < 0)
 	{

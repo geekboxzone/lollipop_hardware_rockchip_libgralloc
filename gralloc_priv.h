@@ -92,7 +92,7 @@ struct fb_dmabuf_export
 #define GRALLOC_ARM_NUM_FDS 0
 #endif
 
-#define NUM_INTS_IN_PRIVATE_HANDLE ((sizeof(private_handle_t) - sizeof(native_handle)) / sizeof(int) - sNumFds)
+#define NUM_INTS_IN_PRIVATE_HANDLE ((sizeof(struct private_handle_t) - sizeof(native_handle)) / sizeof(int) - sNumFds)
 
 
 
@@ -122,7 +122,7 @@ struct private_module_t
 {
 	gralloc_module_t base;
 
-	private_handle_t* framebuffer;
+	struct private_handle_t* framebuffer;
 	uint32_t flags;
 	uint32_t numBuffers;
 	uint32_t bufferMask;
@@ -144,8 +144,10 @@ struct private_module_t
 		PRIV_USAGE_LOCKED_FOR_POST = 0x80000000
 	};
 
+#ifdef __cplusplus
 	/* default constructor */
 	private_module_t();
+#endif
 };
 
 #ifdef __cplusplus

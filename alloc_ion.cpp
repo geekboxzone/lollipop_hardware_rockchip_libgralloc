@@ -40,7 +40,7 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 {
 	private_module_t* m = reinterpret_cast<private_module_t*>(dev->common.module);
 	ion_user_handle_t ion_hnd;
-	unsigned char *cpu_ptr;
+	unsigned char *cpu_ptr = NULL;
 	int shared_fd;
 	int ret;
 	unsigned int heap_mask;
@@ -78,6 +78,7 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 	int ion_flags = 0;
     if(usage == (GRALLOC_USAGE_HW_COMPOSER|GRALLOC_USAGE_HW_RENDER|GRALLOC_USAGE_HW_VIDEO_ENCODER))
         Ishwc = true;
+
     #if 0
 	if ( (usage & GRALLOC_USAGE_SW_READ_MASK) == GRALLOC_USAGE_SW_READ_OFTEN )
 	{
@@ -89,6 +90,7 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
         heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID); // force Brower GraphicBufferAllocator to logics memery
     }
     #endif
+
     ALOGV("[%d,%d,%d],usage=%x",m->ion_client, size, ion_flags,usage);   
 	ret = ion_alloc(m->ion_client, size, 0, heap_mask, ion_flags, &ion_hnd );
 	if ( ret != 0 ) 
@@ -124,17 +126,23 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 		if ( 0 != ion_free( m->ion_client, ion_hnd ) ) AERR( "ion_free( %d ) failed", m->ion_client );		
 		return -1;
 	}
-	cpu_ptr = (unsigned char*)mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, shared_fd, 0 );
 
-	if ( MAP_FAILED == cpu_ptr )
+	if (!(usage & GRALLOC_USAGE_PROTECTED))
 	{
-		AERR( "ion_map( %d ) failed", m->ion_client );
-		if ( 0 != ion_free( m->ion_client, ion_hnd ) ) AERR( "ion_free( %d ) failed", m->ion_client );		
-		close( shared_fd );
-		return -1;
+		cpu_ptr = (unsigned char*)mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, shared_fd, 0 );
+
+		if ( MAP_FAILED == cpu_ptr )
+		{
+			AERR( "ion_map( %d ) failed", m->ion_client );
+			if ( 0 != ion_free( m->ion_client, ion_hnd ) ) AERR( "ion_free( %d ) failed", m->ion_client );
+			close( shared_fd );
+			return -1;
+		}
+		lock_state = private_handle_t::LOCK_STATE_MAPPED;
 	}
 
-	private_handle_t *hnd = new private_handle_t( private_handle_t::PRIV_FLAGS_USES_ION, usage, size, cpu_ptr, private_handle_t::LOCK_STATE_MAPPED );
+	private_handle_t *hnd = new private_handle_t( private_handle_t::PRIV_FLAGS_USES_ION, usage, size, cpu_ptr,
+	                                              lock_state );
 
 	if ( NULL != hnd )
 	{
@@ -154,8 +162,13 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 	}
 
 	close( shared_fd );
-	ret = munmap( cpu_ptr, size );
-	if ( 0 != ret ) AERR( "munmap failed for base:%p size: %zd", cpu_ptr, size );
+
+	if(!(usage & GRALLOC_USAGE_PROTECTED))
+	{
+		ret = munmap( cpu_ptr, size );
+		if ( 0 != ret ) AERR( "munmap failed for base:%p size: %zd", cpu_ptr, size );
+	}
+
 	ret = ion_free( m->ion_client, ion_hnd );
 	if ( 0 != ret ) AERR( "ion_free( %d ) failed", m->ion_client );
 	return -1;
