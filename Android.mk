@@ -19,7 +19,7 @@ LOCAL_PATH := $(call my-dir)
 
 DISABLE_FRAMEBUFFER_HAL?=0
 
-ifneq ($(strip $(TARGET_BOARD_PLATFORM)), rk3368)
+ifneq ($(strip $(TARGET_BOARD_PLATFORM)), rk3368)		# .R : 3368 的 gralloc 的源码和这里 完全无关. 
 
 MALI_ARCHITECTURE_UTGARD?=0
 MALI_ION?=1
@@ -47,7 +47,7 @@ ifeq ($(MALI_ARCHITECTURE_UTGARD),1)
 		ALLOCATION_LIB := libUMP
 		ALLOCATOR_SPECIFIC_FILES := alloc_ump.cpp gralloc_module_ump.cpp
 	endif
-else
+else	# ifeq ($(MALI_ARCHITECTURE_UTGARD),1)
 	# Midgard build settings
 	MALI_LOCAL_PATH?=vendor/arm/mali6xx
 	GRALLOC_DEPTH?=GRALLOC_16_BITS
@@ -60,7 +60,7 @@ else
 		ALLOCATION_LIB := libGLES_mali
 		ALLOCATOR_SPECIFIC_FILES := alloc_ump.cpp gralloc_module_ump.cpp
 	endif
-endif
+endif	# ifeq ($(MALI_ARCHITECTURE_UTGARD),1)
 
 ifeq ($(MALI_AFBC_GRALLOC), 1)
 AFBC_FILES = gralloc_buffer_priv.cpp
@@ -120,4 +120,4 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_SHARED_LIBRARY)
 
-endif
+endif		# ifneq ($(strip $(TARGET_BOARD_PLATFORM)), rk3368)

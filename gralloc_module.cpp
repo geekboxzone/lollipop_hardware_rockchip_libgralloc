@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-#define ENABLE_DEBUG_LOG
+// #define ENABLE_DEBUG_LOG
 #include <log/custom_log.h>
 
 #include <errno.h>

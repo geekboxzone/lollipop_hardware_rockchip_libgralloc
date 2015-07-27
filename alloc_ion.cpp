@@ -16,6 +16,9 @@
  * limitations under the License.
  */
 
+// #define ENABLE_DEBUG_LOG
+#include <log/custom_log.h>
+
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
@@ -46,6 +49,8 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 	unsigned int heap_mask;
     int Ion_type;
     bool Ishwc = false;//
+    int lock_state = 0;
+
 	/*
 	 * The following switch statement is intended to support the use of
 	 * platform specific ION heaps using the gralloc private usage
@@ -92,32 +97,32 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
     #endif
 
     ALOGV("[%d,%d,%d],usage=%x",m->ion_client, size, ion_flags,usage);   
-	ret = ion_alloc(m->ion_client, size, 0, heap_mask, ion_flags, &ion_hnd );
-	if ( ret != 0 ) 
-	{
-	    if( heap_mask == ION_HEAP(ION_CMA_HEAP_ID) && !Ishwc)
-	    {
-	        heap_mask = ION_HEAP(ION_VMALLOC_HEAP_ID);	 
-        	ret = ion_alloc(m->ion_client, size, 0, heap_mask, ion_flags, &ion_hnd );
-        	{
-	if ( ret != 0) 
-	{
+    ret = ion_alloc(m->ion_client, size, 0, heap_mask, ion_flags, &ion_hnd );
+    if ( ret != 0 ) 
+    {
+        if( heap_mask == ION_HEAP(ION_CMA_HEAP_ID) && !Ishwc)
+        {
+            heap_mask = ION_HEAP(ION_VMALLOC_HEAP_ID);	 
+            ret = ion_alloc(m->ion_client, size, 0, heap_mask, ion_flags, &ion_hnd );
+            {
+                if ( ret != 0) 
+                {
                     AERR("Force to VMALLOC fail ion_client:%d", m->ion_client);
                     return -1;
-        	    }
-        	    else
-        	    {
-        	        ALOGD("Force to VMALLOC sucess !");
-        	        Ion_type = 1;
-        	    }        	            	    
-        	}
-	    }
-	    else
-	    {
-		AERR("Failed to ion_alloc from ion_client:%d", m->ion_client);
-		return -1;
-    	}	
-	}
+                }
+                else
+                {
+                    ALOGD("Force to VMALLOC sucess !");
+                    Ion_type = 1;
+                }        	            	    
+            }
+        }
+        else
+        {
+            AERR("Failed to ion_alloc from ion_client:%d", m->ion_client);
+            return -1;
+        }	
+    }
 
 	ret = ion_share( m->ion_client, ion_hnd, &shared_fd );
 	if ( ret != 0 )

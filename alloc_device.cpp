@@ -16,6 +16,9 @@
  * limitations under the License.
  */
 
+// #define ENABLE_DEBUG_LOG
+#include <log/custom_log.h>
+
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
@@ -514,9 +517,11 @@ static bool get_yuv420_afbc_stride_and_size(int width, int height, int* pixel_st
 
 static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int usage, buffer_handle_t* pHandle, int* pStride)
 {
+    D("enter, w : %d, h : %d, format : 0x%x, usage : 0x%x.", w, h, format, usage);
 
 	if (!pHandle || !pStride)
 	{
+        E("err.");
 		return -EINVAL;
 	}
 
@@ -525,7 +530,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 	int pixel_stride;  // Stride of the buffer in pixels - as returned in pStride
 	uint64_t internal_format;
 	AllocType type = UNCOMPRESSED;
-	bool alloc_for_extended_yuv;
+	bool alloc_for_extended_yuv;        // 当前的 internal_format 是否是 extended_yuv_fmt.
 
 	internal_format = gralloc_select_format(format, usage);
 
@@ -543,6 +548,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 
 	alloc_for_extended_yuv = (internal_format & GRALLOC_ARM_INTFMT_EXTENDED_YUV) == GRALLOC_ARM_INTFMT_EXTENDED_YUV;
 
+    /* 若 internal_format "不是" extended_yuv_fmt. 则... */
 	if (!alloc_for_extended_yuv)
 	{
 		switch (internal_format & GRALLOC_ARM_INTFMT_FMT_MASK)
@@ -572,6 +578,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 			case HAL_PIXEL_FORMAT_YV12:
 				if (!get_yv12_stride_and_size(w, h, &pixel_stride, &byte_stride, &size, type))
 				{
+                    E("fail to get stride and size.");
 					return -EINVAL;
 				}
 				break;
@@ -580,11 +587,31 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				 * Additional custom formats can be added here
 				 * and must fill the variables pixel_stride, byte_stride and size.
 				 */
+            case HAL_PIXEL_FORMAT_YCrCb_NV12:
+            case HAL_PIXEL_FORMAT_YCrCb_NV12_10:
+            case HAL_PIXEL_FORMAT_YCrCb_NV12_VIDEO:
+                if (!get_yv12_stride_and_size(w, h, &pixel_stride, &byte_stride, &size, type))
+                {
+                    E("err.");
+                    return -EINVAL;
+                }
+                D("w : %d, h : %d, byte_stride : %d, size : %d; sizeof(tVPU_FRAME) : %d.", w, h, byte_stride, size, sizeof(tVPU_FRAME) );
+
+                size += w*h/2 ; // video dec need more buffer 
+                D_DEC(size)
+#if !GET_VPU_INTO_FROM_HEAD
+                //zxl:add tVPU_FRAME at the end of allocated buffer
+                size = size + sizeof(tVPU_FRAME);
+#endif			
+                D_DEC(size)
+			    break;
 
 			default:
+		        E("unexpected format : 0x%x", internal_format & GRALLOC_ARM_INTFMT_FMT_MASK);
 				return -EINVAL;
 		}
 	}
+    /* 否则, 即 internal_format "是" extended_yuv_fmt. 则... */
 	else
 	{
 		switch (internal_format & GRALLOC_ARM_INTFMT_FMT_MASK)
@@ -593,6 +620,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				/* YUYAAYUVAA 4:2:0 */
 				if (false == get_yuv_y0l2_stride_and_size(w, h, &pixel_stride, &byte_stride, &size))
 				{
+                    E("err.");
 					return -EINVAL;
 				}
 				break;
@@ -601,6 +629,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				/* Y-UV 4:2:0 */
 				if (false == get_yuv_pX10_stride_and_size(w, h, 2, &pixel_stride, &byte_stride, &size))
 				{
+                    E("err.");
 					return -EINVAL;
 				}
 				break;
@@ -609,6 +638,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				/* Y-UV 4:2:2 */
 				if (false == get_yuv_pX10_stride_and_size(w, h, 1, &pixel_stride, &byte_stride, &size))
 				{
+                    E("err.");
 					return -EINVAL;
 				}
 				break;
@@ -617,6 +647,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				/* YUYV 4:2:0 */
 				if (false == get_yuv_y210_stride_and_size(w, h, &pixel_stride, &byte_stride, &size))
 				{
+                    E("err.");
 					return -EINVAL;
 				}
 				break;
@@ -625,6 +656,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				/* AVYU 2-10-10-10 */
 				if (false == get_yuv_y410_stride_and_size(w, h, &pixel_stride, &byte_stride, &size))
 				{
+                    E("err.");
 					return -EINVAL;
 				}
 				break;
@@ -638,26 +670,11 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				/* YUV 4:2:0 compressed */
 				if (false == get_yuv420_afbc_stride_and_size(w, h, &pixel_stride, &byte_stride, &size))
 				{
+                    E("err.");
 					return -EINVAL;
 				}
 				break;
-
-            case HAL_PIXEL_FORMAT_YCrCb_NV12:
-            case HAL_PIXEL_FORMAT_YCrCb_NV12_10:
-            case HAL_PIXEL_FORMAT_YCrCb_NV12_VIDEO:
-                if (!get_yv12_stride_and_size(w, h, &pixel_stride, &byte_stride, &size, alloc_for_afbc))
-                {
-                    return -EINVAL;
-                }
-                size += w*h/2 ; // video dec need more buffer 
-
-#if !GET_VPU_INTO_FROM_HEAD
-                //zxl:add tVPU_FRAME at the end of allocated buffer
-                size = size + sizeof(tVPU_FRAME);
-#endif			
-			    break;
-#endif
-
+            
 			default:
         		AERR("Invalid internal format %llx", internal_format & GRALLOC_ARM_INTFMT_FMT_MASK);
 				return -EINVAL;
@@ -678,6 +695,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 
 	if (err < 0)
 	{
+        E("err : %d", err);
 		return err;
 	}
 
@@ -716,8 +734,6 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 		}
 	}
 #endif
-
-
 
 	int private_usage = usage & (GRALLOC_USAGE_PRIVATE_0 |
 	                             GRALLOC_USAGE_PRIVATE_1);

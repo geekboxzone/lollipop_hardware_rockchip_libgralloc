@@ -31,8 +31,10 @@
 #include <cutils/native_handle.h>
 #include "alloc_device.h"
 #include <utils/Log.h>
-
 #include "format_chooser.h"
+
+/*---------------------------------------------------------------------------*/
+
 #define MALI_ION    1
 #define GET_VPU_INTO_FROM_HEAD      0 //zxl: 0:get vpu info from head of handle base  1:get vpu info from end of handle base
 
@@ -143,6 +145,20 @@ struct private_module_t
 		// flag to indicate we'll post this buffer
 		PRIV_USAGE_LOCKED_FOR_POST = 0x80000000
 	};
+
+/**
+ * 对 32_5.x 预期宏配置的检查,
+ * 用于检查依赖 private_handle_t 的 模块 (mali_so 等), 编译期对相关宏配置正确. 
+ */
+#if GRALLOC_ARM_DMA_BUF_MODULE != 1
+#error
+#endif
+#if MALI_AFBC_GRALLOC != 0
+#error
+#endif
+#if GRALLOC_ARM_UMP_MODULE != 0
+#error
+#endif
 
 #ifdef __cplusplus
 	/* default constructor */
