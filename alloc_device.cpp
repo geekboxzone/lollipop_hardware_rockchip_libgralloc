@@ -576,6 +576,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 
 			case HAL_PIXEL_FORMAT_YCrCb_420_SP:
 			case HAL_PIXEL_FORMAT_YV12:
+			case HAL_PIXEL_FORMAT_YCbCr_420_888:
 				if (!get_yv12_stride_and_size(w, h, &pixel_stride, &byte_stride, &size, type))
 				{
                     E("fail to get stride and size.");
@@ -607,7 +608,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 			    break;
 
 			default:
-		        E("unexpected format : 0x%x", internal_format & GRALLOC_ARM_INTFMT_FMT_MASK);
+		        E("unexpected format : 0x%llx", internal_format & GRALLOC_ARM_INTFMT_FMT_MASK);
 				return -EINVAL;
 		}
 	}
