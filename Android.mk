@@ -20,6 +20,7 @@ LOCAL_PATH := $(call my-dir)
 DISABLE_FRAMEBUFFER_HAL?=0
 
 ifneq ($(strip $(TARGET_BOARD_PLATFORM)), rk3368)		# .R : 3368 的 gralloc 的源码和这里 完全无关. 
+ifneq ($(strip $(TARGET_BOARD_PLATFORM)), rk3366)		# .R : 3366 的 gralloc 的源码和这里 完全无关. 
 
 MALI_ARCHITECTURE_UTGARD?=0
 MALI_ION?=1
@@ -120,4 +121,5 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_SHARED_LIBRARY)
 
+endif		# ifneq ($(strip $(TARGET_BOARD_PLATFORM)), rk3366)
 endif		# ifneq ($(strip $(TARGET_BOARD_PLATFORM)), rk3368)
